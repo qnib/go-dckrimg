@@ -34,7 +34,15 @@ var checkCmd = &cobra.Command{
 	    if endpoint == "" {
 	        endpoint = "unix:///var/run/docker.sock"
 	    }
+
 	    client, _ := docker.NewClient(endpoint)
+		if os.Getenv("DOCKER_TLS_VERIFY") == "1" {
+			path := os.Getenv("DOCKER_CERT_PATH")
+    		ca := fmt.Sprintf("%s/ca.pem", path)
+    		cert := fmt.Sprintf("%s/cert.pem", path)
+    		key := fmt.Sprintf("%s/key.pem", path)
+    		client, _ = docker.NewTLSClient(endpoint, cert, key, ca)
+		}
 	    imgs, _ := client.ListImages(docker.ListImagesOptions{All: false})
 	    imgName := fmt.Sprintf("qnib/%s", os.Getenv("GO_PIPELINE_NAME"))
 	    nameArr := strings.Split(os.Getenv("GO_PIPELINE_NAME"), "_")
@@ -66,7 +74,10 @@ var checkCmd = &cobra.Command{
 	            }
 	        }
 	    }
-	    if latest == current {
+		if current == "" {
+			fmt.Printf("current sha is empty?!\n")
+			os.Exit(2)
+		} else if latest == current {
 	        fmt.Printf("FAIL > '%s' :  '%s'==%s !! Therefore we do not need to go on...\n", imgName, imgTag, compTag)
 	        os.Exit(1)
 	    } else {
